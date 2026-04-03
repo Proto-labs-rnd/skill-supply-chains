@@ -13,83 +13,100 @@ Simulates agents that create, buy, improve, and resell skills in supply chains. 
 ## Install
 
 ```bash
-# No dependencies beyond Python 3.10+
 pip install -e .
-# Or just run directly:
-python skill_supply_chains.py
 ```
 
-## Usage
+## Quick Start
 
 ```bash
 # Run all scenarios
-python skill_supply_chains.py
+skill-supply-chains
 
 # Run specific scenario
-python skill_supply_chains.py --scenario linear
-python skill_supply_chains.py --scenario hub
-python skill_supply_chains.py --scenario random
+skill-supply-chains --scenario linear
+skill-supply-chains --scenario hub
+skill-supply-chains --scenario random
+skill-supply-chains --scenario decay
+skill-supply-chains --scenario oligopoly
 
 # JSON output
-python skill_supply_chains.py --json
+skill-supply-chains --json
 
-# Custom parameters
-python skill_supply_chains.py --seed 42 --steps 50
+# Custom seed and steps
+skill-supply-chains --seed 123 --steps 100
 ```
 
-## API Usage
+## Python API
 
 ```python
-from skill_supply_chains import SkillSupplyChainSimulation
+from skill_supply_chains import SkillSupplyChainSimulation, scenario_linear_chain
 
-sim = SkillSupplyChainSimulation(seed=42)
+# Run built-in scenario
+result = scenario_linear_chain(seed=42)
+print(f"Compound ratio: {result['compound_ratio']:.3f}")
 
-# Create agents with domain expertise
-sim.add_agent("Alpha", {"routing": 0.9})
-sim.add_agent("Beta", {"search": 0.7})
+# Custom simulation
+sim = SkillSupplyChainSimulation(
+    seed=42,
+    config={"hop_decay": 0.05, "default_budget": 200.0},
+)
+sim.add_agent("Alice", {"nlp": 0.9})
+sim.add_agent("Bob", {"search": 0.8})
+sim.create_skill("Alice", "text-processor", 0.5, 0.7, "nlp")
+sim.improve_skill("Alice", "text-processor")
+sim.trade_skill("Alice", "Bob", "text-processor")
 
-# Create and trade skills
-sim.create_skill("Alpha", "query-router", quality=0.5, specialization=0.7, domain="routing")
-sim.improve_skill("Alpha", "query-router")
-sim.trade_skill("Alpha", "Beta", "query-router")
-
-# Get results
-summary = sim.summarize("my_scenario")
+summary = sim.summarize("custom")
+print(f"Gini: {sim.wealth_gini():.4f}")
 ```
 
 ## Scenarios
 
-| Scenario | Description | Key Insight |
+| Scenario | Description | Key Finding |
 |----------|-------------|-------------|
-| `linear` | A→B→C→D chain | Value compounds with domain expertise at each hop |
-| `hub` | Hub buys from creators, improves, resells | Hub agents capture arbitrage value |
-| `random` | Free trading among 6 agents | Pareto wealth dynamics emerge naturally |
+| `linear` | A→B→C→D chain | Value compounds with domain expertise |
+| `hub` | Hub buys, improves, resells | Hub captures value via arbitrage |
+| `random` | Free-form random trading | Compound ratio depends on expertise alignment |
+| `decay` | High hop decay | Diminishing returns limit chain value |
+| `oligopoly` | Two wealthy agents dominate | Wealth concentrates to initial capital |
+
+## Configuration
+
+Override defaults via the `config` dict:
+
+```python
+config = {
+    "improvement_base": 0.05,     # base improvement per hop
+    "expertise_bonus": 0.15,      # domain expertise multiplier
+    "specialization_drift": 0.1,  # sigma for specialization drift
+    "hop_decay": 0.02,            # per-hop decay factor
+    "acquisition_markup": 1.3,    # trade price multiplier
+    "default_budget": 100.0,      # starting agent budget
+}
+sim = SkillSupplyChainSimulation(seed=42, config=config)
+```
 
 ## Architecture
 
 ```
-skill_supply_chains.py   # Core simulation (SkillSupplyChainSimulation class)
+src/skill_supply_chains/
+  __init__.py    — Public API exports
+  core.py        — Simulation engine, data models (Agent, SkillVersion, SupplyChain)
+  scenarios.py   — Built-in scenario functions
+  cli.py         — CLI entry point with argparse
 tests/
-  test_supply_chains.py  # 6 unit tests
+  test_supply_chains.py — 45+ tests covering models, engine, scenarios, CLI
 examples/
-  custom_scenario.py     # Example of building custom scenarios
+  basic_usage.py        — Run linear scenario
+  custom_simulation.py  — Custom config + trading
 ```
 
-## Key Findings
+## Testing
 
-1. **Compounding works**: Linear chains with domain expertise produce compound ratios >1.0
-2. **Hub dominance**: Agents with broad expertise naturally become value aggregators
-3. **Pareto dynamics**: Free trading produces unequal wealth distribution (few winners, many losers)
-4. **Diminishing returns**: Hop decay limits maximum chain value, preventing infinite compounding
-
-## Parameters
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `improvement_base` | 0.05 | Base quality gain per improvement |
-| `expertise_bonus` | 0.15 | Max bonus from domain expertise |
-| `hop_decay` | 0.02 | Quality decay per hop (diminishing returns) |
-| `acquisition_markup` | 1.3 | Seller markup on acquisition cost |
+```bash
+pip install pytest
+pytest
+```
 
 ## License
 
